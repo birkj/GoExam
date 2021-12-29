@@ -2,13 +2,15 @@ package main
 
 import (
 	"context"
-	"fmt"
+	"flag"
 	"google.golang.org/grpc"
 	"log"
 	"net"
 	pb "program/route"
 	"strconv"
 )
+
+var port = flag.String("port", "8080", "The docker port of the server")
 
 type server struct {
 	pb.UnimplementedRouteServer
@@ -31,7 +33,7 @@ func (s *server) BroadcastMessage(ctx context.Context, in *pb.RequestText) (*pb.
 func (s *server) SayHello(ctx context.Context, inText *pb.RequestText) (*pb.ReplyText, error) {
 
 	//Show text from client
-	fmt.Println("Client " + strconv.FormatInt(inText.Client.GetId(), 10) + ": " + inText.GetBody())
+	log.Println("Client " + strconv.FormatInt(inText.Client.GetId(), 10) + ": " + inText.GetBody())
 
 	//Tell client that their message was recived
 	return &pb.ReplyText{Body: inText.Body + " from server"}, nil
@@ -41,7 +43,7 @@ func (s *server) SayHello(ctx context.Context, inText *pb.RequestText) (*pb.Repl
 func (s *server) Connect(ctx context.Context, in *pb.ConnectRequest) (*pb.Acknowledgement, error) {
 
 	//Show that a new client has connected on server
-	fmt.Println("Client " + strconv.FormatInt(in.Id, 10) + ": has connected")
+	log.Println("Client " + strconv.FormatInt(in.Id, 10) + ": has connected")
 
 	//Add client to servers list of clients when connecting
 
@@ -52,7 +54,7 @@ func (s *server) Connect(ctx context.Context, in *pb.ConnectRequest) (*pb.Acknow
 	}
 
 	s.connectedClients = append(s.connectedClients, strconv.FormatInt(in.Id, 10))
-	fmt.Println(s.connectedClients)
+	log.Println(s.connectedClients)
 
 	//Answer client
 	return &pb.Acknowledgement{Status: "Successfully connected"}, nil

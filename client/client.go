@@ -35,7 +35,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("could not greet: %v", err)
 	}
-	fmt.Println(ack.Status)
+	log.Println(ack.Status)
 
 	//Ask forever
 	for {
