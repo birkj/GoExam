@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"google.golang.org/grpc"
 	"log"
 	"net"
@@ -18,6 +19,7 @@ type Server struct {
 	pb.UnimplementedRouteServer
 	ConnectedClients []string
 	Logfile          os.File
+	ServerID         int32
 }
 
 type argError struct {
@@ -36,7 +38,7 @@ func (s *Server) BroadcastMessage(ctx context.Context, in *pb.RequestText) (*pb.
 func (s *Server) SayHello(ctx context.Context, inText *pb.RequestText) (*pb.ReplyText, error) {
 
 	//Show text from client
-	msg := "Client " + strconv.FormatInt(inText.Client.GetId(), 10) + ": " + inText.GetBody()
+	msg := "Client " + fmt.Sprint(inText.Client) + ": " + inText.GetBody()
 	WriteToLogFile(*s, msg)
 	log.Println(msg)
 
@@ -46,7 +48,7 @@ func (s *Server) SayHello(ctx context.Context, inText *pb.RequestText) (*pb.Repl
 }
 
 func (s *Server) SendHeartBeats(ctx context.Context, in *pb.HeartBeat) (*pb.Acknowledgement, error) {
-	msg := "Heartbeat from: " + strconv.FormatInt(in.Clientid.Id, 10) + ". Lamport Timestamp: " + strconv.FormatInt(in.Time.Lamport, 10)
+	msg := "Heartbeat from: " + fmt.Sprint(in.Id) + ". Lamport Timestamp: " + fmt.Sprint(in.Time.Lamport)
 	WriteToLogFile(*s, msg)
 	log.Println(msg)
 	return &pb.Acknowledgement{Status: "Recieved heartbeat"}, nil
@@ -55,27 +57,27 @@ func (s *Server) SendHeartBeats(ctx context.Context, in *pb.HeartBeat) (*pb.Ackn
 func (s *Server) Connect(ctx context.Context, in *pb.ConnectRequest) (*pb.Acknowledgement, error) {
 
 	//Show that a new client has connected on Server
-	msg := "Client " + strconv.FormatInt(in.Id, 10) + ": has connected"
+	msg := "Client " + fmt.Sprint(in.Id) + ": has connected"
 	WriteToLogFile(*s, msg)
 	log.Println(msg)
 
 	//Add client to servers list of clients when connecting
 
 	for _, client := range s.ConnectedClients {
-		if client == strconv.FormatInt(in.Id, 10) {
+		if client == fmt.Sprint(in.Id) {
 			return nil, &argError{"Name doublication", "Name already exists on Server"}
 		}
 	}
 
-	s.ConnectedClients = append(s.ConnectedClients, strconv.FormatInt(in.Id, 10))
+	s.ConnectedClients = append(s.ConnectedClients, fmt.Sprint(in.Id))
 	log.Println(s.ConnectedClients)
 
 	//Answer client
 	return &pb.Acknowledgement{Status: "Successfully connected"}, nil
 }
 
-func CreateLogFile(id int64) os.File {
-	file, error := os.Create("server_" + strconv.FormatInt(id, 10) + "_log.txt")
+func CreateLogFile(id int32) os.File {
+	file, error := os.Create("server_" + fmt.Sprint(id) + "_log.txt")
 	if error != nil {
 		log.Fatalf("Failed to create file: %v", error)
 	}
@@ -98,7 +100,8 @@ func main() {
 	server := Server{
 
 		ConnectedClients: make([]string, 0),
-		Logfile:          CreateLogFile(*id),
+		Logfile:          CreateLogFile(int32(*id)),
+		ServerID:         int32(*id),
 	}
 
 	//Start Server

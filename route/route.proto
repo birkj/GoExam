@@ -10,7 +10,7 @@ service Route {
 }
 
 message ConnectRequest{
-    int64 id = 1;
+    int32 id = 1;
 }
 
 message Acknowledgement{
@@ -19,7 +19,7 @@ message Acknowledgement{
 
 message RequestText {
     string body = 1;
-    ClientID client = 2;
+    int32 client = 2;
 }
 
 message ReplyText {
@@ -34,16 +34,14 @@ message GenericText{
 //Helper functions
 message HeartBeat{
     LamportTimeStamp time = 1;
-    ClientID clientid = 2;
+    int32 id = 2;
 }
 
 message LamportTimeStamp {
-    int64 lamport = 1;
+    int32 lamport = 1;
 }
 
-message ClientID {
-    int64 id = 1;
-}
+
 
 
 

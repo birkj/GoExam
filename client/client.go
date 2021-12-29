@@ -15,7 +15,7 @@ import (
 
 type Client struct {
 	pb.RouteClient
-	ClientID         pb.ClientID
+	ClientID         int32
 	LamportTimeStamp pb.LamportTimeStamp
 	Logfile          os.File
 }
@@ -27,7 +27,7 @@ func SendHeartBeatToServer(client Client) {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()
 
-		ack, err := client.SendHeartBeats(ctx, &pb.HeartBeat{Time: &client.LamportTimeStamp, Clientid: &client.ClientID})
+		ack, err := client.SendHeartBeats(ctx, &pb.HeartBeat{Time: &client.LamportTimeStamp, Id: client.ClientID})
 		if err != nil {
 			log.Fatalf("No response from server: %v", err)
 		}
@@ -38,7 +38,7 @@ func SendHeartBeatToServer(client Client) {
 }
 
 func ConnectToServer(ctx context.Context, client Client) {
-	ack, err := client.Connect(ctx, &pb.ConnectRequest{Id: client.ClientID.Id})
+	ack, err := client.Connect(ctx, &pb.ConnectRequest{Id: client.ClientID})
 	if err != nil {
 		log.Fatalf("could not greet: %v", err)
 	}
@@ -78,7 +78,7 @@ func main() {
 
 	client := Client{
 		pb.NewRouteClient(conn),
-		pb.ClientID{Id: *id},
+		int32(*id),
 		pb.LamportTimeStamp{Lamport: 0},
 		CreateLogFile(*id),
 	}
@@ -102,7 +102,7 @@ func main() {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()
 
-		reply, err := client.SayHello(ctx, &pb.RequestText{Body: string(text), Client: &client.ClientID})
+		reply, err := client.SayHello(ctx, &pb.RequestText{Body: string(text), Client: client.ClientID})
 		if err != nil {
 			log.Fatalf("could not say hello: %v", err)
 		}
