@@ -4,11 +4,9 @@
     <option name="autoReloadType" value="ALL" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="48b63a39-6755-49c2-a4ac-d1a96a98a65e" name="Changes" comment="Add heartbeats from clients to server (needs to be reversed) + file logging">
+    <list default="true" id="48b63a39-6755-49c2-a4ac-d1a96a98a65e" name="Changes" comment="Change proto file primitives">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/client/client.go" beforeDir="false" afterPath="$PROJECT_DIR$/client/client.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/route/route.pb.go" beforeDir="false" afterPath="$PROJECT_DIR$/route/route.pb.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/route/route.proto" beforeDir="false" afterPath="$PROJECT_DIR$/route/route.proto" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Makefile" beforeDir="false" afterPath="$PROJECT_DIR$/Makefile" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/server/server.go" beforeDir="false" afterPath="$PROJECT_DIR$/server/server.go" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -94,7 +92,8 @@
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="Add heartbeats from clients to server (needs to be reversed) + file logging" />
-    <option name="LAST_COMMIT_MESSAGE" value="Add heartbeats from clients to server (needs to be reversed) + file logging" />
+    <MESSAGE value="Change proto file primitives" />
+    <option name="LAST_COMMIT_MESSAGE" value="Change proto file primitives" />
   </component>
   <component name="VgoProject">
     <integration-enabled>true</integration-enabled>
