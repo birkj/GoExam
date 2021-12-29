@@ -5,18 +5,13 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="48b63a39-6755-49c2-a4ac-d1a96a98a65e" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/.gitignore" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/exam.iml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/modules.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Makefile" beforeDir="false" afterPath="$PROJECT_DIR$/Makefile" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/program/Dockerfile" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/program/client/client.go" beforeDir="false" afterPath="$PROJECT_DIR$/client/client.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/program/go.mod" beforeDir="false" afterPath="$PROJECT_DIR$/go.mod" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/program/go.sum" beforeDir="false" afterPath="$PROJECT_DIR$/go.sum" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/program/route/route.pb.go" beforeDir="false" afterPath="$PROJECT_DIR$/route/route.pb.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/program/route/route.proto" beforeDir="false" afterPath="$PROJECT_DIR$/route/route.proto" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/program/route/route_grpc.pb.go" beforeDir="false" afterPath="$PROJECT_DIR$/route/route_grpc.pb.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/program/server/server.go" beforeDir="false" afterPath="$PROJECT_DIR$/server/server.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/client.go" beforeDir="false" afterPath="$PROJECT_DIR$/client/client.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/route/route.pb.go" beforeDir="false" afterPath="$PROJECT_DIR$/route/route.pb.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/route/route.proto" beforeDir="false" afterPath="$PROJECT_DIR$/route/route.proto" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/route/route_grpc.pb.go" beforeDir="false" afterPath="$PROJECT_DIR$/route/route_grpc.pb.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/server/server.go" beforeDir="false" afterPath="$PROJECT_DIR$/server/server.go" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
