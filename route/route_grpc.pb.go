@@ -23,9 +23,9 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type RouteClient interface {
 	Connect(ctx context.Context, in *ConnectRequest, opts ...grpc.CallOption) (*Acknowledgement, error)
-	SayHello(ctx context.Context, in *RequestText, opts ...grpc.CallOption) (*ReplyText, error)
-	BroadcastMessage(ctx context.Context, in *RequestText, opts ...grpc.CallOption) (*GenericText, error)
-	SendHeartBeats(ctx context.Context, in *HeartBeat, opts ...grpc.CallOption) (*Acknowledgement, error)
+	SendLeaderHeartBeat(ctx context.Context, in *HeartBeat, opts ...grpc.CallOption) (*Acknowledgement, error)
+	Election(ctx context.Context, in *RequestText, opts ...grpc.CallOption) (*Acknowledgement, error)
+	ElectionResult(ctx context.Context, in *RequestText, opts ...grpc.CallOption) (*Acknowledgement, error)
 }
 
 type routeClient struct {
@@ -45,27 +45,27 @@ func (c *routeClient) Connect(ctx context.Context, in *ConnectRequest, opts ...g
 	return out, nil
 }
 
-func (c *routeClient) SayHello(ctx context.Context, in *RequestText, opts ...grpc.CallOption) (*ReplyText, error) {
-	out := new(ReplyText)
-	err := c.cc.Invoke(ctx, "/Route/SayHello", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *routeClient) BroadcastMessage(ctx context.Context, in *RequestText, opts ...grpc.CallOption) (*GenericText, error) {
-	out := new(GenericText)
-	err := c.cc.Invoke(ctx, "/Route/BroadcastMessage", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *routeClient) SendHeartBeats(ctx context.Context, in *HeartBeat, opts ...grpc.CallOption) (*Acknowledgement, error) {
+func (c *routeClient) SendLeaderHeartBeat(ctx context.Context, in *HeartBeat, opts ...grpc.CallOption) (*Acknowledgement, error) {
 	out := new(Acknowledgement)
-	err := c.cc.Invoke(ctx, "/Route/SendHeartBeats", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/Route/SendLeaderHeartBeat", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *routeClient) Election(ctx context.Context, in *RequestText, opts ...grpc.CallOption) (*Acknowledgement, error) {
+	out := new(Acknowledgement)
+	err := c.cc.Invoke(ctx, "/Route/Election", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *routeClient) ElectionResult(ctx context.Context, in *RequestText, opts ...grpc.CallOption) (*Acknowledgement, error) {
+	out := new(Acknowledgement)
+	err := c.cc.Invoke(ctx, "/Route/ElectionResult", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -77,9 +77,9 @@ func (c *routeClient) SendHeartBeats(ctx context.Context, in *HeartBeat, opts ..
 // for forward compatibility
 type RouteServer interface {
 	Connect(context.Context, *ConnectRequest) (*Acknowledgement, error)
-	SayHello(context.Context, *RequestText) (*ReplyText, error)
-	BroadcastMessage(context.Context, *RequestText) (*GenericText, error)
-	SendHeartBeats(context.Context, *HeartBeat) (*Acknowledgement, error)
+	SendLeaderHeartBeat(context.Context, *HeartBeat) (*Acknowledgement, error)
+	Election(context.Context, *RequestText) (*Acknowledgement, error)
+	ElectionResult(context.Context, *RequestText) (*Acknowledgement, error)
 	mustEmbedUnimplementedRouteServer()
 }
 
@@ -90,14 +90,14 @@ type UnimplementedRouteServer struct {
 func (UnimplementedRouteServer) Connect(context.Context, *ConnectRequest) (*Acknowledgement, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Connect not implemented")
 }
-func (UnimplementedRouteServer) SayHello(context.Context, *RequestText) (*ReplyText, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SayHello not implemented")
+func (UnimplementedRouteServer) SendLeaderHeartBeat(context.Context, *HeartBeat) (*Acknowledgement, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SendLeaderHeartBeat not implemented")
 }
-func (UnimplementedRouteServer) BroadcastMessage(context.Context, *RequestText) (*GenericText, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method BroadcastMessage not implemented")
+func (UnimplementedRouteServer) Election(context.Context, *RequestText) (*Acknowledgement, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Election not implemented")
 }
-func (UnimplementedRouteServer) SendHeartBeats(context.Context, *HeartBeat) (*Acknowledgement, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SendHeartBeats not implemented")
+func (UnimplementedRouteServer) ElectionResult(context.Context, *RequestText) (*Acknowledgement, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ElectionResult not implemented")
 }
 func (UnimplementedRouteServer) mustEmbedUnimplementedRouteServer() {}
 
@@ -130,56 +130,56 @@ func _Route_Connect_Handler(srv interface{}, ctx context.Context, dec func(inter
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Route_SayHello_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(RequestText)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(RouteServer).SayHello(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/Route/SayHello",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RouteServer).SayHello(ctx, req.(*RequestText))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Route_BroadcastMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(RequestText)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(RouteServer).BroadcastMessage(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/Route/BroadcastMessage",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RouteServer).BroadcastMessage(ctx, req.(*RequestText))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Route_SendHeartBeats_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Route_SendLeaderHeartBeat_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(HeartBeat)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(RouteServer).SendHeartBeats(ctx, in)
+		return srv.(RouteServer).SendLeaderHeartBeat(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/Route/SendHeartBeats",
+		FullMethod: "/Route/SendLeaderHeartBeat",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RouteServer).SendHeartBeats(ctx, req.(*HeartBeat))
+		return srv.(RouteServer).SendLeaderHeartBeat(ctx, req.(*HeartBeat))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Route_Election_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RequestText)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RouteServer).Election(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/Route/Election",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RouteServer).Election(ctx, req.(*RequestText))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Route_ElectionResult_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RequestText)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RouteServer).ElectionResult(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/Route/ElectionResult",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RouteServer).ElectionResult(ctx, req.(*RequestText))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -196,16 +196,16 @@ var Route_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Route_Connect_Handler,
 		},
 		{
-			MethodName: "SayHello",
-			Handler:    _Route_SayHello_Handler,
+			MethodName: "SendLeaderHeartBeat",
+			Handler:    _Route_SendLeaderHeartBeat_Handler,
 		},
 		{
-			MethodName: "BroadcastMessage",
-			Handler:    _Route_BroadcastMessage_Handler,
+			MethodName: "Election",
+			Handler:    _Route_Election_Handler,
 		},
 		{
-			MethodName: "SendHeartBeats",
-			Handler:    _Route_SendHeartBeats_Handler,
+			MethodName: "ElectionResult",
+			Handler:    _Route_ElectionResult_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

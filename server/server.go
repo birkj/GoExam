@@ -34,6 +34,7 @@ type Server struct {
 	LeaderID         int32
 	LeaderPort       int32
 	Port             int32
+	LamportTimestamp pb.LamportTimeStamp
 }
 
 type argError struct {
@@ -45,26 +46,7 @@ func (e *argError) Error() string {
 	return e._type + ": " + e._desc
 }
 
-func (s *Server) BroadcastMessage(ctx context.Context, in *pb.RequestText) (*pb.GenericText, error) {
-	return &pb.GenericText{Body: in.Body}, nil
-}
-
-func (s *Server) SayHello(ctx context.Context, inText *pb.RequestText) (*pb.ReplyText, error) {
-
-	//Show text from client
-	msg := "Client " + fmt.Sprint(inText.Client) + ": " + inText.GetBody()
-	WriteToLog(*s, msg)
-
-	//Tell client that their message was recived
-	return &pb.ReplyText{Body: inText.Body + " from Server"}, nil
-
-}
-
-func (s *Server) SendHeartBeats(ctx context.Context, in *pb.HeartBeat) (*pb.Acknowledgement, error) {
-	msg := "Heartbeat from: " + fmt.Sprint(in.Id) + ". Lamport Timestamp: " + fmt.Sprint(in.Time.Lamport)
-	WriteToLog(*s, msg)
-	return &pb.Acknowledgement{Status: "Recieved heartbeat"}, nil
-}
+//----------IMPLEMENTED FROM PROTO FILE
 
 func (s *Server) Connect(ctx context.Context, in *pb.ConnectRequest) (*pb.Acknowledgement, error) {
 
@@ -87,6 +69,30 @@ func (s *Server) Connect(ctx context.Context, in *pb.ConnectRequest) (*pb.Acknow
 	return &pb.Acknowledgement{Status: "Successfully connected"}, nil
 }
 
+func (s *Server) SendLeaderHeartBeat(ctx context.Context, in *pb.HeartBeat) (*pb.Acknowledgement, error) {
+	WriteToLog(*s, "Heartbeat from replica "+fmt.Sprint(in.Id)+" | Lamport: "+fmt.Sprint(in.Time.Lamport))
+	return &pb.Acknowledgement{Status: "Leader (server " + fmt.Sprint(s.ServerID) + ") is alive"}, nil
+}
+
+func (s *Server) Election(ctx context.Context, in *pb.RequestText) (*pb.Acknowledgement, error) {
+	if in.Id < s.ServerID {
+		WriteToLog(*s, "I'm leader now")
+		return &pb.Acknowledgement{Status: "Server with id " + fmt.Sprint(s.ServerID) + " is leader"}, nil
+	} else {
+		CallElection(s)
+		return &pb.Acknowledgement{Status: "I'm not leader"}, &argError{"Not leader", "I can't be leader"}
+	}
+}
+
+func (s *Server) ElectionResult(ctx context.Context, in *pb.RequestText) (*pb.Acknowledgement, error) {
+	//Set new leader
+	s.LeaderID = in.Id
+	return &pb.Acknowledgement{Status: "Set new leader to " + fmt.Sprint(in.Id)}, nil
+}
+
+//-------------Local Functions------------
+//Log file
+
 func CreateLogFile(id int32) os.File {
 	file, error := os.Create("server_" + fmt.Sprint(id) + "_log.txt")
 	if error != nil {
@@ -95,6 +101,7 @@ func CreateLogFile(id int32) os.File {
 	return *file
 }
 
+//WriteToLog writes to an external file and logs to running terminal
 func WriteToLog(s Server, txt string) {
 	//To show in terminal once running
 	log.Println(txt)
@@ -104,9 +111,9 @@ func WriteToLog(s Server, txt string) {
 	s.Logfile.WriteString(t.Round(d).String() + ": " + txt + "\n")
 }
 
-func InitReplicas(s Server, numReplicas int32, port int32) {
-	//Init clients from this server to all other servers, ports assumed to be fixed from program init
-	WriteToLog(s, "Connecting to replicas.....")
+//InitReplicas inits clients from this server to all other servers, ports assumed to be fixed from program init
+func InitReplicas(s *Server, numReplicas int32, port int32) {
+	WriteToLog(*s, "Connecting to replicas.....")
 	for i := 0; i < int(numReplicas); i++ {
 		//Don't add yourself
 		replicaPort := port + int32(i)
@@ -115,13 +122,105 @@ func InitReplicas(s Server, numReplicas int32, port int32) {
 		}
 
 		//Connect to replica port
-		conn, err := grpc.Dial("localhost:"+fmt.Sprint(port), grpc.WithInsecure(), grpc.WithBlock())
+		conn, err := grpc.Dial("localhost:"+fmt.Sprint(replicaPort), grpc.WithInsecure(), grpc.WithBlock())
 		if err != nil {
 			log.Fatalf("did not connect: %v", err)
 		}
 		s.Replicas = append(s.Replicas, Replica{id: int32(i), port: replicaPort, connection: pb.NewRouteClient(conn)})
-		WriteToLog(s, "Connected to replica with id: "+fmt.Sprint(i))
+
+		//Increase Lamport since this is an event
+		s.LamportTimestamp.Lamport++
+		WriteToLog(*s, "Connected to replica with id: "+fmt.Sprint(i)+" and port: "+fmt.Sprint(replicaPort)+" | Lamport: "+fmt.Sprint(s.LamportTimestamp.Lamport))
 	}
+}
+
+//LeaderHeartBeat makes all replicas send a heartbeat to the current leader, the leader responds with an ack to confirm he/she is alive
+func LeaderHeartBeat(s *Server) {
+	for {
+		//Leader doesn't ping itself
+		if s.ServerID != s.LeaderID {
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+			defer cancel()
+			for _, replica := range s.Replicas {
+				//Replicas ping leader
+				if replica.id == s.LeaderID {
+					ack, err := replica.connection.SendLeaderHeartBeat(ctx, &pb.HeartBeat{Id: s.ServerID, Time: &s.LamportTimestamp})
+					if err != nil {
+						//ELECTION
+						WriteToLog(*s, "Leader not responding... calling election")
+						CallElection(s)
+						//log.Fatalf("failed to serve: %v", err)
+						continue
+					}
+					WriteToLog(*s, ack.Status)
+				}
+			}
+		}
+		//Pings every 5 seconds (just not to bloat the log, would be more often in a real system maybe every 150ms - 300ms or so)
+		time.Sleep(time.Second * 5)
+	}
+
+}
+
+//CallElection is called if the leader is not responding to
+func CallElection(s *Server) {
+
+	//Remove dead server (old leader)
+	for i, replica := range s.Replicas {
+		if replica.id == s.LeaderID {
+			s.Replicas = RemoveReplica(s.Replicas, i)
+		}
+	}
+
+	//Bully method
+	for _, replica := range s.Replicas {
+		log.Println(replica.id)
+		if replica.id > s.ServerID {
+			//Call election to higher id's
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+			defer cancel()
+			_, err := replica.connection.Election(ctx, &pb.RequestText{Id: s.ServerID, Body: "You're a candidate for leader"})
+			if err != nil {
+				log.Println(err)
+				continue
+			}
+
+			//Leader is found
+			BroadcastElectionResult(s, replica)
+			break
+		}
+	}
+}
+
+func BroadcastElectionResult(s *Server, replica Replica) {
+	log.Println(fmt.Sprint(replica.id) + " is leader now")
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	for _, r := range s.Replicas {
+		_, err := r.connection.ElectionResult(ctx, &pb.RequestText{Id: replica.id, Body: "New leader elected"})
+		if err != nil {
+			log.Println("Failed to send election result to server with id " + fmt.Sprint(replica.id) + " assuming it's dead.")
+			//TODO: REMOVE DEAD REPLICA? OR ALLOW TO RECONNECT?
+		}
+	}
+	s.LeaderID = replica.id
+}
+
+//RemoveReplica removes dead replicas (used to remove dead leader from Replica's list of other Replicas)
+func RemoveReplica(s []Replica, index int) []Replica {
+	return append(s[:index], s[index+1:]...)
+}
+
+//CalculateLamport finds max lamport and increase by 1
+func CalculateLamport(s Server, other pb.LamportTimeStamp) *pb.LamportTimeStamp {
+
+	new := pb.LamportTimeStamp{Lamport: 0}
+	if s.LamportTimestamp.Lamport > other.Lamport {
+		new.Lamport = s.LamportTimestamp.Lamport + 1
+	} else {
+		new.Lamport = other.Lamport + 1
+	}
+	return &new
 }
 
 func main() {
@@ -142,13 +241,15 @@ func main() {
 		LeaderID:         int32(*leader),
 		LeaderPort:       int32(*leaderPort),
 		Port:             int32(*port),
+		LamportTimestamp: pb.LamportTimeStamp{Lamport: 0},
 	}
 
 	//Write that we started server
-	WriteToLog(server, "Started server "+fmt.Sprint(*id)+" on port: "+fmt.Sprint(*port))
+	WriteToLog(server, "Started server with id "+fmt.Sprint(*id)+" on port: "+fmt.Sprint(*port)+" | Lamport "+fmt.Sprint(server.LamportTimestamp.Lamport))
 
 	//Connect to replicas
-	go InitReplicas(server, int32(*numReplicas), int32(*leaderPort))
+	go InitReplicas(&server, int32(*numReplicas), int32(*leaderPort))
+	go LeaderHeartBeat(&server)
 
 	//Start Server
 	lis, err := net.Listen("tcp", ":"+strconv.FormatInt(*port, 10))
@@ -163,3 +264,5 @@ func main() {
 	}
 
 }
+
+//TODO: 1)
