@@ -5,8 +5,11 @@ option go_package = "../program";
 service Route {
     rpc Connect(ConnectRequest) returns (Acknowledgement){}
     rpc SendLeaderHeartBeat(HeartBeat) returns (Acknowledgement) {}
-    rpc Election(RequestText) returns (Acknowledgement) {}
     rpc ElectionResult(RequestText) returns (Acknowledgement) {}
+}
+
+message Empty {
+
 }
 
 message ConnectRequest{
@@ -26,7 +29,6 @@ message ReplyText {
     string body = 1;
 }
 
-
 message GenericText{
     string body = 1;
 }
@@ -37,9 +39,11 @@ message HeartBeat{
     int32 id = 2;
 }
 
+
 message LamportTimeStamp {
     int32 lamport = 1;
 }
+
 
 
 

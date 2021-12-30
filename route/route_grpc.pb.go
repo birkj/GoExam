@@ -26,6 +26,7 @@ type RouteClient interface {
 	SendLeaderHeartBeat(ctx context.Context, in *HeartBeat, opts ...grpc.CallOption) (*Acknowledgement, error)
 	Election(ctx context.Context, in *RequestText, opts ...grpc.CallOption) (*Acknowledgement, error)
 	ElectionResult(ctx context.Context, in *RequestText, opts ...grpc.CallOption) (*Acknowledgement, error)
+	RemoveDeadLeader(ctx context.Context, in *RequestText, opts ...grpc.CallOption) (*Acknowledgement, error)
 }
 
 type routeClient struct {
@@ -72,6 +73,15 @@ func (c *routeClient) ElectionResult(ctx context.Context, in *RequestText, opts 
 	return out, nil
 }
 
+func (c *routeClient) RemoveDeadLeader(ctx context.Context, in *RequestText, opts ...grpc.CallOption) (*Acknowledgement, error) {
+	out := new(Acknowledgement)
+	err := c.cc.Invoke(ctx, "/Route/RemoveDeadLeader", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // RouteServer is the server API for Route service.
 // All implementations must embed UnimplementedRouteServer
 // for forward compatibility
@@ -80,6 +90,7 @@ type RouteServer interface {
 	SendLeaderHeartBeat(context.Context, *HeartBeat) (*Acknowledgement, error)
 	Election(context.Context, *RequestText) (*Acknowledgement, error)
 	ElectionResult(context.Context, *RequestText) (*Acknowledgement, error)
+	RemoveDeadLeader(context.Context, *RequestText) (*Acknowledgement, error)
 	mustEmbedUnimplementedRouteServer()
 }
 
@@ -98,6 +109,9 @@ func (UnimplementedRouteServer) Election(context.Context, *RequestText) (*Acknow
 }
 func (UnimplementedRouteServer) ElectionResult(context.Context, *RequestText) (*Acknowledgement, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ElectionResult not implemented")
+}
+func (UnimplementedRouteServer) RemoveDeadLeader(context.Context, *RequestText) (*Acknowledgement, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RemoveDeadLeader not implemented")
 }
 func (UnimplementedRouteServer) mustEmbedUnimplementedRouteServer() {}
 
@@ -184,6 +198,24 @@ func _Route_ElectionResult_Handler(srv interface{}, ctx context.Context, dec fun
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Route_RemoveDeadLeader_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RequestText)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RouteServer).RemoveDeadLeader(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/Route/RemoveDeadLeader",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RouteServer).RemoveDeadLeader(ctx, req.(*RequestText))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Route_ServiceDesc is the grpc.ServiceDesc for Route service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -206,6 +238,10 @@ var Route_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ElectionResult",
 			Handler:    _Route_ElectionResult_Handler,
+		},
+		{
+			MethodName: "RemoveDeadLeader",
+			Handler:    _Route_RemoveDeadLeader_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

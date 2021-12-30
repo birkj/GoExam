@@ -10,6 +10,7 @@ import (
 	"os"
 	pb "program/route"
 	"strconv"
+	"sync"
 	"time"
 )
 
@@ -35,6 +36,7 @@ type Server struct {
 	LeaderPort       int32
 	Port             int32
 	LamportTimestamp pb.LamportTimeStamp
+	Mutex            sync.Mutex
 }
 
 type argError struct {
@@ -74,18 +76,12 @@ func (s *Server) SendLeaderHeartBeat(ctx context.Context, in *pb.HeartBeat) (*pb
 	return &pb.Acknowledgement{Status: "Leader (server " + fmt.Sprint(s.ServerID) + ") is alive"}, nil
 }
 
-func (s *Server) Election(ctx context.Context, in *pb.RequestText) (*pb.Acknowledgement, error) {
-	if in.Id < s.ServerID {
-		WriteToLog(*s, "I'm leader now")
-		return &pb.Acknowledgement{Status: "Server with id " + fmt.Sprint(s.ServerID) + " is leader"}, nil
-	} else {
-		CallElection(s)
-		return &pb.Acknowledgement{Status: "I'm not leader"}, &argError{"Not leader", "I can't be leader"}
-	}
-}
-
 func (s *Server) ElectionResult(ctx context.Context, in *pb.RequestText) (*pb.Acknowledgement, error) {
+	//Delete old leader from replicas
+	RemoveDeadLeader(s)
+
 	//Set new leader
+	WriteToLog(*s, "Update received: new leader is"+fmt.Sprint(in.Id))
 	s.LeaderID = in.Id
 	return &pb.Acknowledgement{Status: "Set new leader to " + fmt.Sprint(in.Id)}, nil
 }
@@ -146,17 +142,16 @@ func LeaderHeartBeat(s *Server) {
 				if replica.id == s.LeaderID {
 					ack, err := replica.connection.SendLeaderHeartBeat(ctx, &pb.HeartBeat{Id: s.ServerID, Time: &s.LamportTimestamp})
 					if err != nil {
-						//ELECTION
+						//ELECTION if no leader heartbeat
 						WriteToLog(*s, "Leader not responding... calling election")
 						CallElection(s)
-						//log.Fatalf("failed to serve: %v", err)
 						continue
 					}
 					WriteToLog(*s, ack.Status)
 				}
 			}
 		}
-		//Pings every 5 seconds (just not to bloat the log, would be more often in a real system maybe every 150ms - 300ms or so)
+		//Pings every 5 seconds (in order not to bloat the log, would be more often in a real system maybe every 150ms - 300ms or so)
 		time.Sleep(time.Second * 5)
 	}
 
@@ -165,35 +160,28 @@ func LeaderHeartBeat(s *Server) {
 //CallElection is called if the leader is not responding to
 func CallElection(s *Server) {
 
-	//Remove dead server (old leader)
-	for i, replica := range s.Replicas {
-		if replica.id == s.LeaderID {
-			s.Replicas = RemoveReplica(s.Replicas, i)
-		}
-	}
+	//Delete old leader from replicas
+	RemoveDeadLeader(s)
 
-	//Bully method
+	//Find biggest replica id
+	max := int32(0)
 	for _, replica := range s.Replicas {
-		log.Println(replica.id)
-		if replica.id > s.ServerID {
-			//Call election to higher id's
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-			defer cancel()
-			_, err := replica.connection.Election(ctx, &pb.RequestText{Id: s.ServerID, Body: "You're a candidate for leader"})
-			if err != nil {
-				log.Println(err)
-				continue
-			}
-
-			//Leader is found
-			BroadcastElectionResult(s, replica)
-			break
+		if replica.id > max {
+			max = replica.id
 		}
 	}
+	log.Println("MAX IS " + fmt.Sprint(max))
+	//Leader is found, broadcast to others
+	for _, replica := range s.Replicas {
+		if replica.id == max {
+
+			BroadcastElectionResult(s, replica)
+		}
+	}
+
 }
 
 func BroadcastElectionResult(s *Server, replica Replica) {
-	log.Println(fmt.Sprint(replica.id) + " is leader now")
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	for _, r := range s.Replicas {
@@ -211,6 +199,16 @@ func RemoveReplica(s []Replica, index int) []Replica {
 	return append(s[:index], s[index+1:]...)
 }
 
+func RemoveDeadLeader(s *Server) {
+	//Remove dead server (old leader)
+	for i, replica := range s.Replicas {
+		if replica.id == s.LeaderID {
+			s.Replicas = RemoveReplica(s.Replicas, i)
+			break
+		}
+	}
+}
+
 //CalculateLamport finds max lamport and increase by 1
 func CalculateLamport(s Server, other pb.LamportTimeStamp) *pb.LamportTimeStamp {
 
@@ -223,6 +221,7 @@ func CalculateLamport(s Server, other pb.LamportTimeStamp) *pb.LamportTimeStamp 
 	return &new
 }
 
+//Since this is passive replication, a "server" has to act both as a client and a server to other "servers"
 func main() {
 	//Get arguments from flag
 	id := flag.Int64("server_id", 0, "current environment")
@@ -264,5 +263,3 @@ func main() {
 	}
 
 }
-
-//TODO: 1)

@@ -4,9 +4,8 @@
     <option name="autoReloadType" value="ALL" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="48b63a39-6755-49c2-a4ac-d1a96a98a65e" name="Changes" comment="Servers can connect to other servers">
+    <list default="true" id="48b63a39-6755-49c2-a4ac-d1a96a98a65e" name="Changes" comment="Servers can now handle crashes, picking first server, not the highest id tho.">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Makefile" beforeDir="false" afterPath="$PROJECT_DIR$/Makefile" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/route/route.pb.go" beforeDir="false" afterPath="$PROJECT_DIR$/route/route.pb.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/route/route.proto" beforeDir="false" afterPath="$PROJECT_DIR$/route/route.proto" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/route/route_grpc.pb.go" beforeDir="false" afterPath="$PROJECT_DIR$/route/route_grpc.pb.go" afterDir="false" />
@@ -97,7 +96,8 @@
     <MESSAGE value="Add heartbeats from clients to server (needs to be reversed) + file logging" />
     <MESSAGE value="Change proto file primitives" />
     <MESSAGE value="Servers can connect to other servers" />
-    <option name="LAST_COMMIT_MESSAGE" value="Servers can connect to other servers" />
+    <MESSAGE value="Servers can now handle crashes, picking first server, not the highest id tho." />
+    <option name="LAST_COMMIT_MESSAGE" value="Servers can now handle crashes, picking first server, not the highest id tho." />
   </component>
   <component name="VgoProject">
     <integration-enabled>true</integration-enabled>
